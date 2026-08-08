@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MATCO Designs — Performance Dashboard 2025–2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Arial,sans-serif;background:#EEF2F7;color:#1A1A1A;font-size:13px}
+
+/* ══ HEADER ══════════════════════════════════════════════ */
+.header{
+  height:68px;
+  background:linear-gradient(135deg,#0E2A47 0%,#1A5276 60%,#0E2A47 100%);
+  border-bottom:3px solid #2E7DB2;
+  display:flex;align-items:stretch;
+}
+.header-content{
+  position:relative;z-index:2;
+  display:flex;align-items:center;gap:18px;padding:0 24px;flex:1;
+}
+.hdr-badge{background:#fff;padding:8px 18px;border-radius:6px;margin-right:4px;display:flex;align-items:center;flex-shrink:0;font-weight:700;color:#0E2A47;font-size:15px;letter-spacing:.03em}
+.hdr-divider{width:1.5px;height:36px;background:rgba(255,255,255,0.2);flex-shrink:0}
+.hdr-text h1{font-size:15px;font-weight:700;color:#fff;letter-spacing:.02em}
+.hdr-text p{font-size:10px;color:#8AACC8;margin-top:3px}
+.hdr-sync{
+  margin-left:auto;display:flex;align-items:center;gap:10px;
+}
+.sync-pill{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);
+  border-radius:6px;padding:5px 12px;font-size:9.5px;color:#fff;white-space:nowrap;
+  cursor:pointer;
+}
+.sync-pill:hover{background:rgba(255,255,255,0.2)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#7B8899;flex-shrink:0}
+.sync-dot.live{background:#2ECC71;box-shadow:0 0 5px #2ECC71}
+.sync-dot.stale{background:#E67E22}
+.hdr-date{
+  background:rgba(255,255,255,0.12);border-radius:6px;
+  padding:6px 14px;text-align:center;border:1px solid rgba(255,255,255,0.2);
+}
+.hdr-date .dv{font-size:13px;font-weight:700;color:#fff}
+.hdr-date .dl{font-size:9px;color:#8AACC8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+
+/* ══ SHEET CONFIG BANNER ═══════════════════════════════════ */
+.cfgbar{background:#153B60;border-bottom:1px solid #1A3A5C;padding:6px 24px;display:none;align-items:center;gap:10px;font-size:10.5px;color:#C9DAEA}
+.cfgbar.show{display:flex}
+.cfgbar input{flex:1;max-width:520px;border:1px solid #2E7DB2;background:#0D2440;color:#fff;border-radius:4px;padding:5px 8px;font-size:10.5px;font-family:inherit}
+.cfgbar button{background:#2E7DB2;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer}
+.cfgbar button:hover{background:#256290}
+.cfgbar .close{background:transparent;color:#8AACC8;font-size:14px;padding:0 4px;cursor:pointer}
+
+/* ══ FILTER BAR ══════════════════════════════════════════ */
+.filterbar{
+  background:#0D2440;border-bottom:2px solid #1A3A5C;
+  padding:7px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.fg{display:flex;align-items:center}
+.fg-badge{font-size:9px;font-weight:700;color:#fff;padding:0 9px;height:28px;
+  line-height:28px;border-radius:4px 0 0 4px;text-transform:uppercase;
+  letter-spacing:.06em;white-space:nowrap;}
+.fg select{height:28px;background:#fff;border:none;border-radius:0 4px 4px 0;
+  padding:0 22px 0 8px;font-size:11px;font-family:inherit;color:#0E2A47;font-weight:600;
+  cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0l4.5 5L9 0z' fill='%230E2A47'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 6px center;min-width:120px;}
+.fg select:focus{outline:none}
+.reset-btn{height:28px;background:#C0392B;color:#fff;border:none;border-radius:4px;
+  padding:0 13px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:4px;}
+.reset-btn:hover{background:#a93226}
+.fg-dates{background:#fff;border-radius:4px;padding:0 8px;height:28px;display:flex;align-items:center;gap:5px}
+.fg-dates.disabled{opacity:.45;pointer-events:none}
+.dateinp{border:none;font-size:11px;font-family:inherit;color:#0E2A47;font-weight:600;height:26px;padding:0;background:transparent;cursor:pointer}
+.dateinp:focus{outline:none}
+.dateinp-sep{font-size:9.5px;color:#B0BCCC;text-transform:uppercase}
+.date-banner{background:#FDF3E3;border:1px solid #F0D5A0;color:#8A5A00;font-size:10.5px;
+  padding:7px 24px;display:none;align-items:center;gap:8px}
+.date-banner.show{display:flex}
+
+/* ══ TABS ════════════════════════════════════════════════ */
+.nav-tabs{background:#fff;border-bottom:1px solid #D5DBE5;padding:0 24px;display:flex;}
+.nav-tab{padding:11px 18px;font-size:12px;font-weight:600;color:#7B8899;cursor:pointer;
+  border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;}
+.nav-tab:hover{color:#0E2A47}
+.nav-tab.active{color:#0E2A47;border-bottom-color:#2E7DB2}
+.tab-badge{background:#EEF2F7;color:#7B8899;border-radius:10px;font-size:10px;font-weight:700;padding:1px 7px;}
+.nav-tab.active .tab-badge{background:#2E7DB2;color:#fff}
+
+/* ══ CONTENT ═════════════════════════════════════════════ */
+.content{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ══ KPI CARDS ═══════════════════════════════════════════ */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.kpi-card{background:#fff;border-radius:7px;border:1px solid #D5DBE5;
+  border-left:5px solid var(--ac);padding:14px 15px 11px;
+  display:flex;flex-direction:column;gap:4px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.kpi-card .lbl{font-size:9px;font-weight:700;color:#9AACBE;text-transform:uppercase;letter-spacing:.08em}
+.kpi-card .val{font-size:23px;font-weight:700;color:#0E2A47;line-height:1.15}
+.kpi-card .sub{font-size:9.5px;color:#B0BCCC;margin-top:1px}
+
+/* ══ CHART CARDS ═════════════════════════════════════════ */
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.row1{margin-bottom:12px}
+.ccard{background:#fff;border-radius:7px;border:1px solid #D5DBE5;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.ccard .ch{font-size:11px;font-weight:700;color:#0E2A47;padding-bottom:8px;margin-bottom:8px;border-bottom:2px solid #EEF2F7;display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.note{font-size:9px;color:#B0BCCC;font-weight:400}
+.chartbox{position:relative}
+.sm{height:210px}.lg{height:320px}.xl{height:250px}
+.empty-note{color:#B0BCCC;font-size:11px;padding:30px 10px;text-align:center}
+.tv-select{height:22px;background:#EEF2F7;border:1px solid #D5DBE5;border-radius:4px;font-size:10px;font-family:inherit;color:#0E2A47;font-weight:600;padding:0 6px}
+
+/* ══ TABLE ═══════════════════════════════════════════════ */
+.tcard{background:#fff;border-radius:7px;border:1px solid #D5DBE5;padding:15px 18px;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px}
+.tcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.tcard-top h3{font-size:12px;font-weight:700;color:#0E2A47}
+.srch-inp{border:1.5px solid #D5DBE5;border-radius:5px;padding:6px 12px;font-size:12px;font-family:inherit;width:260px;color:#1A1A1A}
+.srch-inp:focus{outline:none;border-color:#2E7DB2}
+.t-info{font-size:10.5px;color:#B0BCCC}
+.twrap{overflow:auto;max-height:560px}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+thead th{background:#0E2A47;color:#fff;padding:8px 10px;text-align:left;position:sticky;top:0;font-size:10.5px;font-weight:700;white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{background:#153B60}
+tbody td{padding:7px 10px;border-bottom:1px solid #EEF2F7;vertical-align:middle;white-space:nowrap}
+tbody tr:hover{background:#F5F8FC}
+.r{text-align:right}
+.pill{display:inline-block;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:700;white-space:nowrap}
+.pc{background:#D5F5E3;color:#1E8449}
+.pw{background:#FEF3CD;color:#B7791F}
+.pp{background:#F2F2F2;color:#888}
+.pu{background:#EDE7F6;color:#6C3483}
+.pb{background:#D6EAF8;color:#1A5276}
+.pn{background:#FADBD8;color:#C0392B}
+
+/* ══ PRODUCTION TRACKER ══════════════════════════════════ */
+.wip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:14px;margin-bottom:16px}
+.wip-card{background:#fff;border-radius:8px;border:1px solid #D5DBE5;padding:16px 18px;box-shadow:0 1px 6px rgba(0,0,0,.07);transition:box-shadow .15s}
+.wip-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.wip-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.wip-tag{font-size:13px;font-weight:700;color:#0E2A47}
+.wip-cust{font-size:10px;color:#7B8899;margin-top:2px}
+.wip-amount{font-size:13px;font-weight:700;color:#1A5276;white-space:nowrap}
+.wip-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.wip-badge{background:#EEF2F7;border-radius:4px;padding:3px 8px;font-size:10px;color:#4A5568}
+.wip-badge b{color:#0E2A47}
+.stage-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.stage-name{font-size:10px;font-weight:700}
+.stage-pct{font-size:10px;color:#7B8899}
+.pipeline{display:flex;gap:3px;margin-bottom:6px}
+.pip-step{flex:1;height:8px;border-radius:4px;background:#EEF2F7}
+.pip-step.done{background:#1E8449}
+.pip-step.active{background:#2E7DB2}
+.pip-step.fail{background:#C0392B}
+.stage-steps{display:flex;justify-content:space-between;margin-bottom:10px}
+.stage-steps span{font-size:7.5px;color:#C0BCCC;text-align:center;flex:1;line-height:1.2}
+.stage-steps .s-done{color:#1E8449;font-weight:600}
+.stage-steps .s-active{color:#2E7DB2;font-weight:700}
+.wip-footer{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid #EEF2F7}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-content">
+    <div class="hdr-badge">⚡ MATCO</div>
+    <div class="hdr-divider"></div>
+    <div class="hdr-text">
+      <h1>MATCO Designs List — Performance Dashboard</h1>
+      <p>Transformer Design Engineering &amp; Production Tracker &middot; 2025–2026</p>
+    </div>
+    <div class="hdr-sync">
+      <div class="sync-pill" id="sync-pill" onclick="toggleCfgBar()">
+        <span class="sync-dot" id="sync-dot"></span>
+        <span id="sync-label">Static data — click to connect Google Sheet</span>
+      </div>
+      <div class="hdr-date">
+        <div class="dl">Report Date</div>
+        <div class="dv" id="report-date">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GOOGLE SHEET CONFIG ═════════════════════════════════ -->
+<div class="cfgbar" id="cfgbar">
+  <span>Google Sheet CSV URL (File → Share → Publish to web → CSV, or the sheet's <code>/gviz/tq?tqx=out:csv</code> link):</span>
+  <input id="cfg-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/…/gviz/tq?tqx=out:csv&sheet=Sheet1">
+  <button onclick="saveCfg()">Connect</button>
+  <button onclick="clearCfg()" style="background:#7B8899">Disconnect</button>
+  <span class="close" onclick="toggleCfgBar()">✕</span>
+</div>
+
+<!-- ══ FILTER BAR ══════════════════════════════════════════ -->
+<div class="filterbar">
+  <div class="fg"><span class="fg-badge" style="background:#117864">Time View</span>
+    <select id="f-timepreset" onchange="onPresetChange()">
+      <option value="all">All Time</option>
+      <option value="today">Today</option>
+      <option value="last7">Last 7 Days</option>
+      <option value="week">This Week</option>
+      <option value="last30">Last 30 Days</option>
+      <option value="month">This Month</option>
+      <option value="quarter">This Quarter</option>
+      <option value="year">This Year</option>
+      <option value="custom">Custom Range…</option>
+    </select></div>
+  <div class="fg fg-dates disabled" id="fg-dates">
+    <input type="date" id="f-date-from" class="dateinp" onchange="onDateInputChange()">
+    <span class="dateinp-sep">to</span>
+    <input type="date" id="f-date-to" class="dateinp" onchange="onDateInputChange()">
+  </div>
+  <div class="fg"><span class="fg-badge" style="background:#1A5276">Market</span>
+    <select id="f-market" onchange="refresh()"><option value="">All</option></select></div>
+  <div class="fg"><span class="fg-badge" style="background:#8E44AD">Classification</span>
+    <select id="f-classification" onchange="refresh()"><option value="">All</option></select></div>
+  <div class="fg"><span class="fg-badge" style="background:#2E7DB2">Elec. Eng</span>
+    <select id="f-eeng" onchange="refresh()"><option value="">All</option></select></div>
+  <div class="fg"><span class="fg-badge" style="background:#5BA3E0">Mech. Eng</span>
+    <select id="f-meng" onchange="refresh()"><option value="">All</option></select></div>
+  <div class="fg"><span class="fg-badge" style="background:#6C3483">Material</span>
+    <select id="f-material" onchange="refresh()"><option value="">All</option></select></div>
+  <div class="fg"><span class="fg-badge" style="background:#C68A1F">Prod. Status</span>
+    <select id="f-pstatus" onchange="refresh()"><option value="">All</option></select></div>
+  <div class="fg"><span class="fg-badge" style="background:#8E44AD">Testing</span>
+    <select id="f-tstatus" onchange="refresh()"><option value="">All</option></select></div>
+  <button class="reset-btn" onclick="resetFilters()">✕ Reset Filters</button>
+</div>
+<div class="date-banner" id="date-banner"></div>
+
+<!-- ══ TABS ═════════════════════════════════════════════════ -->
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="showTab('overview',this)">📈 Overview</div>
+  <div class="nav-tab" onclick="showTab('tracker',this)">⚙️ Production Tracker <span class="tab-badge" id="trk-count">0</span></div>
+  <div class="nav-tab" onclick="showTab('register',this)">📄 Design Register <span class="tab-badge" id="reg-count">0</span></div>
+</div>
+
+<div class="content">
+
+<!-- ══ OVERVIEW ═════════════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="kpi-grid" id="kpis"></div>
+
+  <div class="row4">
+    <div class="ccard"><div class="ch">Winding Material Split</div><div class="chartbox sm"><canvas id="c1"></canvas></div></div>
+    <div class="ccard"><div class="ch">Production Status <span class="note">WIP not broken down &middot; see breakdown chart below</span></div><div class="chartbox sm"><canvas id="c2"></canvas></div></div>
+    <div class="ccard"><div class="ch">Testing Status</div><div class="chartbox sm"><canvas id="c4"></canvas></div></div>
+    <div class="ccard"><div class="ch">Frequency Split</div><div class="chartbox sm"><canvas id="c8"></canvas></div></div>
+  </div>
+
+  <div class="row2">
+    <div class="ccard"><div class="ch">Designs by Market</div><div class="chartbox lg"><canvas id="c5"></canvas></div></div>
+    <div class="ccard"><div class="ch">Designs by Electrical Design Eng</div><div class="chartbox lg"><canvas id="c6"></canvas></div></div>
+  </div>
+
+  <div class="row2">
+    <div class="ccard"><div class="ch">Designs by Mechanical Design Eng</div><div class="chartbox lg"><canvas id="c6b"></canvas></div></div>
+    <div class="ccard"><div class="ch">Designs by Vector Group</div><div class="chartbox lg"><canvas id="c12"></canvas></div></div>
+  </div>
+
+  <div class="row1">
+    <div class="ccard">
+      <div class="ch">
+        <span>Designs Over Time <span class="note" id="time-note">grouped by Start Date (Electrical)</span></span>
+        <span style="display:flex;align-items:center;gap:5px">
+          <span class="note">Group by:</span>
+          <select id="c-time-groupby" class="tv-select" onchange="onGroupByChange()">
+            <option value="days">Days</option>
+            <option value="weeks">Weeks</option>
+            <option value="months">Months</option>
+            <option value="years">Years</option>
+          </select>
+        </span>
+      </div>
+      <div class="chartbox xl" id="c-time-box"><canvas id="c-time"></canvas></div>
+    </div>
+  </div>
+
+  <div class="row1">
+    <div class="ccard"><div class="ch">Designs by Rating (kVA) — Individual Values</div><div class="chartbox" style="height:400px"><canvas id="c7"></canvas></div></div>
+  </div>
+
+  <div class="row1">
+    <div class="ccard"><div class="ch">WIP Sub-Group Breakdown</div><div class="chartbox xl"><canvas id="c9"></canvas></div></div>
+  </div>
+
+  <div class="row1">
+    <div class="ccard"><div class="ch">Design Classification Breakdown</div><div class="chartbox xl"><canvas id="c10"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ══ PRODUCTION TRACKER ═══════════════════════════════════ -->
+<div id="tab-tracker" class="tab-panel">
+  <div class="kpi-grid" id="trk-kpis"></div>
+  <div class="wip-grid" id="trk-grid"></div>
+</div>
+
+<!-- ══ DESIGN REGISTER ══════════════════════════════════════ -->
+<div id="tab-register" class="tab-panel">
+  <div class="tcard">
+    <div class="tcard-top">
+      <h3>Full Design Register</h3>
+      <input class="srch-inp" id="srch-reg" placeholder="Search any column: design no, market, engineer, classification…" oninput="renderRegister(filtered())">
+      <span class="t-info" id="reg-info"></span>
+    </div>
+    <div class="twrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Design No.</th><th>Year</th><th>Winding Material</th><th class="r">Rating (kVA)</th><th>HV (kV)</th><th>LV (kV)</th><th>Frequency</th><th>Vector Group</th><th>Market</th><th>Electrical Design Eng</th><th>Mechanical Design Eng</th><th>Design Classification</th><th>Completion Time Electrical</th><th>Completion Time Mechanical</th><th>Design Status</th><th>Production Status</th><th>Testing Status</th>
+        </tr></thead>
+        <tbody id="tbody-reg"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   LIVE DATA CONFIG
+   ────────────────────────────────────────────────────────────
+   To link this dashboard to your live Google Sheet:
+   1. In Google Sheets: File → Share → Publish to web → select the
+      "Sheet1" tab → format CSV → Publish. Copy the link.
+      (Or use: https://docs.google.com/spreadsheets/d/SHEET_ID/gviz/tq?tqx=out:csv&sheet=Sheet1)
+   2. Click the "Static data" pill top-right of this dashboard, paste
+      the link, and click Connect. The dashboard will re-fetch the
+      sheet automatically every 60 seconds from then on (also stored
+      in this browser via localStorage so it reconnects next visit).
+   3. Any row you add/remove/edit in the sheet — including new or
+      removed Market, Classification, or Engineer names — will flow
+      through automatically: all dropdowns and charts are built from
+      whatever values exist in the data at refresh time.
+   ════════════════════════════════════════════════════════════ */
+const REFRESH_MS = 60000;
+let SHEET_CSV_URL = '';
+try{ SHEET_CSV_URL = localStorage.getItem('matco_sheet_csv_url') || ''; }catch(e){}
+
+// Expected Google Sheet column headers (row 1 of the sheet should match these
+// — case/whitespace tolerant matching is used below).
+const COLMAP = {
+  'design no.':'design', 'design no':'design',
+  'market':'market',
+  'winding material':'material',
+  'rating (kva)':'rating',
+  'hv (kv)':'hv',
+  'lv (kv)':'lv',
+  'frequency':'freq',
+  'vector group':'vgroup',
+  'electrical design eng':'eeng',
+  'mechanical design eng':'meng',
+  'design classification':'classification',
+  'remarks':'remarks',
+  'start date (electrical)':'startDateE',
+  'end date (electrical)':'endDateE',
+  'completion time electrical':'completionE',
+  'start date (mechaincal)':'startDateM','start date (mechanical)':'startDateM',
+  'end date (mechaincal)':'endDateM','end date (mechanical)':'endDateM',
+  'completion time mechanical':'completionM','completion time':'completionM',
+  'design status':'dstatus',
+  'production status':'pstatus',
+  'testing status':'tstatus',
+};
+
+function cleanKey(k){ return String(k||'').trim().toLowerCase().replace(/\s+/g,' '); }
+
+function toNum(v){
+  if(v===null||v===undefined||v==='') return null;
+  const n = Number(String(v).replace(/,/g,''));
+  return isNaN(n) ? null : n;
+}
+function toStr(v){ return (v===null||v===undefined) ? '' : String(v).trim(); }
+
+// normalize inconsistent free-text status values coming from the sheet
+function normPStatus(raw){
+  const t = toStr(raw);
+  const low = t.toLowerCase();
+  if(!t) return 'Not Started';
+  if(low.includes('not start')) return 'Not Started';
+  if(low.includes('wip') && low.includes('core')) return 'WIP-Core';
+  if(low.includes('wip') && low.includes('wind')) return 'WIP-Winding';
+  if(low.includes('wip') && (low.includes('cca')||low.includes('assembl'))) return 'WIP-CCA';
+  if(low.includes('finish')) return 'Finished';
+  if(low.includes('fail')) return 'Failed';
+  return t;
+}
+function normTStatus(raw){
+  const t = toStr(raw);
+  const low = t.toLowerCase();
+  if(!t || low==='na' || low==='n/a') return 'NA';
+  if(low.includes('pass')) return 'Passed';
+  if(low.includes('rework')) return 'Needs Rework';
+  if(low.includes('fail')) return 'Failed';
+  return t;
+}
+function normDStatus(raw){
+  const t = toStr(raw);
+  const low = t.toLowerCase();
+  if(low.includes('not issued')) return 'Not Issued';
+  if(low.includes('issued')) return 'Issued';
+  return t || 'Issued';
+}
+
+// Convert one raw sheet/CSV row (object keyed by header text) into the
+// internal record shape used throughout the dashboard.
+function normalizeRow(raw){
+  const r = {};
+  Object.keys(raw).forEach(k=>{
+    const mapped = COLMAP[cleanKey(k)];
+    if(mapped) r[mapped] = raw[k];
+  });
+  return {
+    design: toStr(r.design),
+    market: toStr(r.market),
+    material: toStr(r.material),
+    rating: toNum(r.rating),
+    hv: toStr(r.hv),
+    lv: toStr(r.lv),
+    freq: toNum(r.freq),
+    vgroup: toStr(r.vgroup) || null,
+    eeng: toStr(r.eeng),
+    meng: toStr(r.meng),
+    classification: toStr(r.classification),
+    remarks: toStr(r.remarks),
+    startDateE: toStr(r.startDateE) || null,
+    endDateE: toStr(r.endDateE) || null,
+    completionE: toNum(r.completionE),
+    startDateM: toStr(r.startDateM) || null,
+    endDateM: toStr(r.endDateM) || null,
+    completionM: toNum(r.completionM),
+    dstatus: normDStatus(r.dstatus),
+    pstatus: normPStatus(r.pstatus),
+    tstatus: normTStatus(r.tstatus),
+  };
+}
+
+// ── baked-in fallback snapshot (from the Excel you uploaded) ───────────
+// used until a live Google Sheet is connected, and as a fallback if a
+// live fetch ever fails.
+const FALLBACK_RAW = [{"Design No.": 2968, "MARKET": "SEC", "Winding Material": "AL", "Rating (kVA)": 100, "HV (kV)": 13.8, "LV (kV)": "0.4-0.231", "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": 0, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 3004, "MARKET": "Repairing", "Winding Material": "CU", "Rating (kVA)": 5000, "HV (kV)": 13.8, "LV (kV)": 2.4, "Frequency": 60, "Vector Group": "Dyn1", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-CCA", "Testing Status": "NA"}, {"Design No.": 3005, "MARKET": "Repairing", "Winding Material": "CU", "Rating (kVA)": 500, "HV (kV)": 6.3, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 3006, "MARKET": "Repairing", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 13.8, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": "Dyn1", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 3007, "MARKET": "Repairing", "Winding Material": "CU", "Rating (kVA)": 5000, "HV (kV)": 13.2, "LV (kV)": 4.16, "Frequency": 60, "Vector Group": "Dyn1", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 3009, "MARKET": "Repairing", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 13.8, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": "Dyn1", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 3010, "MARKET": "Repairing", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 13.8, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": "Dyn1", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 3012, "MARKET": "Repairing", "Winding Material": "CU", "Rating (kVA)": 1500, "HV (kV)": 13.8, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": "Dyn1", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 7047, "MARKET": "SEC", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 7104, "MARKET": "SEC", "Winding Material": "AL", "Rating (kVA)": 1000, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 7110, "MARKET": "SEC", "Winding Material": "AL", "Rating (kVA)": 1000, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 7111, "MARKET": "SEC", "Winding Material": "AL", "Rating (kVA)": 500, "HV (kV)": 33, "LV (kV)": "0.4-0.23-0.133", "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 7112, "MARKET": "SEC", "Winding Material": "AL", "Rating (kVA)": 1000, "HV (kV)": 33, "LV (kV)": "0.4-0.23-0.133", "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 7115, "MARKET": "SEC", "Winding Material": "AL", "Rating (kVA)": 500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "YNd11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 7116, "MARKET": "SEC", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8150, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 300, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-CCA", "Testing Status": "NA"}, {"Design No.": 8168, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8182, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 2500, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 8212, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 250, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 8317, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 1000, "HV (kV)": 13.8, "LV (kV)": 0.38, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 8318, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 2000, "HV (kV)": 13.8, "LV (kV)": 0.38, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 8333, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 5000, "HV (kV)": 33, "LV (kV)": 13.8, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-CCA", "Testing Status": "NA"}, {"Design No.": 8334, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 8335, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 100, "HV (kV)": 0.48, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "YNyn0", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 8336, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 160, "HV (kV)": 0.48, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "YNyn0", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 8337, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 50, "HV (kV)": 0.38, "LV (kV)": 0.22, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Starteded", "Testing Status": "NA"}, {"Design No.": 8338, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 4.16, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8339, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": "Alternative to 8042", "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8340, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 4.16, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 8341, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8342, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8343, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 8344, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 200, "HV (kV)": 0.4, "LV (kV)": 0.231, "Frequency": 60, "Vector Group": "YNyn0", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 8345, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2500, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8347, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 1600, "HV (kV)": 0.4, "LV (kV)": 6.6, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 8348, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 3000, "HV (kV)": 0.4, "LV (kV)": 6.6, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8349, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 112.5, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8350, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 75, "HV (kV)": 13.8, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8351, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 112.5, "HV (kV)": 33, "LV (kV)": 0.208, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8352, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 75, "HV (kV)": 33, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8353, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2000, "HV (kV)": 33, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8354, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 300, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8355, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 1250, "HV (kV)": 13.8, "LV (kV)": 4.35, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8356, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 500, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8357, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 300, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8358, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 50, "HV (kV)": 0.48, "LV (kV)": 0.208, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8359, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 75, "HV (kV)": 0.4, "LV (kV)": 0.208, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8360, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 150, "HV (kV)": 0.48, "LV (kV)": 0.208, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8361, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 300, "HV (kV)": 0.48, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8362, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2000, "HV (kV)": 4.16, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8363, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 3000, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8364, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 2000, "HV (kV)": 13.8, "LV (kV)": 0.48, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8364, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 3000, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8365, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 3000, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": null, "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8368, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 3000, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8373, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 4800, "HV (kV)": 13.8, "LV (kV)": 0.8, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8374, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 2500, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Failed ", "Testing Status": "NA"}, {"Design No.": 8376, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 300, "HV (kV)": 0.231, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "YNyn0", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": "Alternative To 8029", "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-Winding", "Testing Status": "NA"}, {"Design No.": 8377, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 300, "HV (kV)": 13.8, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": "Alternative to 8150", "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8379, "MARKET": "Private", "Winding Material": "AL", "Rating (kVA)": 4000, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "YNd11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8380, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 1250, "HV (kV)": 13.8, "LV (kV)": 4.35, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": "Alternative to 8355", "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-Core", "Testing Status": "NA"}, {"Design No.": 8381, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 500, "HV (kV)": 2.1, "LV (kV)": 1.3, "Frequency": 60, "Vector Group": "Ya0", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 8386, "MARKET": "Private", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 60, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": "Alternative to 2902-only coils ", "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 9021, "MARKET": "Export-IRAQ", "Winding Material": "CU", "Rating (kVA)": 2000, "HV (kV)": 33, "LV (kV)": 0.416, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9028, "MARKET": "Export-Palestine", "Winding Material": "CU", "Rating (kVA)": 250, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9045, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 300, "HV (kV)": 11, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9049, "MARKET": "Export-IRAQ", "Winding Material": "CU", "Rating (kVA)": 400, "HV (kV)": 33, "LV (kV)": 0.416, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9058, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 11, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9059, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 1500, "HV (kV)": 11, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished ", "Testing Status": "NA"}, {"Design No.": 9064, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 2000, "HV (kV)": 33, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9094, "MARKET": "Export-IRAQ", "Winding Material": "CU", "Rating (kVA)": 2000, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dd0", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9100, "MARKET": "Export-Palestine", "Winding Material": "AL", "Rating (kVA)": 1600, "HV (kV)": 11, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 9172, "MARKET": "Export-Palestine", "Winding Material": "AL", "Rating (kVA)": 630, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 9174, "MARKET": "Export-Palestine", "Winding Material": "CU", "Rating (kVA)": 400, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 9233, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 200, "HV (kV)": 33, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9235, "MARKET": "Export-Sudan", "Winding Material": "AL", "Rating (kVA)": 300, "HV (kV)": 33, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9284, "MARKET": "Export-USA", "Winding Material": "AL", "Rating (kVA)": 1750, "HV (kV)": 34.5, "LV (kV)": 0.69, "Frequency": 60, "Vector Group": "Dyn1", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 9289, "MARKET": "Export-Sudan", "Winding Material": "AL", "Rating (kVA)": 1000, "HV (kV)": 11, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9290, "MARKET": "Export-Jordan", "Winding Material": "CU", "Rating (kVA)": 1500, "HV (kV)": 33, "LV (kV)": 0.415, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 9293, "MARKET": "Export-Sudan", "Winding Material": "AL", "Rating (kVA)": 1500, "HV (kV)": 11, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished ", "Testing Status": "NA"}, {"Design No.": 9294, "MARKET": "Export-IRAQ", "Winding Material": "CU", "Rating (kVA)": 1250, "HV (kV)": 33, "LV (kV)": 0.416, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 9295, "MARKET": "Export-IRAQ", "Winding Material": "CU", "Rating (kVA)": 1250, "HV (kV)": 11, "LV (kV)": 0.416, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}, {"Design No.": 9296, "MARKET": "Export-Palestine", "Winding Material": "CU", "Rating (kVA)": 500, "HV (kV)": 0.4, "LV (kV)": 1, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 9297, "MARKET": "Export-Sudan", "Winding Material": "AL", "Rating (kVA)": 1000, "HV (kV)": 11, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished ", "Testing Status": "NA"}, {"Design No.": 9298, "MARKET": "Export-Palestine", "Winding Material": "CU", "Rating (kVA)": 400, "HV (kV)": 33, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished ", "Testing Status": "NA"}, {"Design No.": 9299, "MARKET": "Export-Palestine", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 11, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "YNd11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "NA"}, {"Design No.": 9300, "MARKET": "Export-Palestine", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 11, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ali Hamza", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 9306, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 200, "HV (kV)": 33, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished ", "Testing Status": "NA"}, {"Design No.": 9307, "MARKET": "Export-Jordan", "Winding Material": "CU", "Rating (kVA)": 1600, "HV (kV)": 33, "LV (kV)": 0.48, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Ahmad Fuqha", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-Winding", "Testing Status": "NA"}, {"Design No.": 9308, "MARKET": "Export-IRAQ", "Winding Material": "CU", "Rating (kVA)": 2000, "HV (kV)": 0.4, "LV (kV)": 33, "Frequency": 50, "Vector Group": "YNd11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Not Started", "Testing Status": "NA"}, {"Design No.": 9309, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 1000, "HV (kV)": 11, "LV (kV)": 0.4, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": "Alternative to 9059", "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-CCA", "Testing Status": "NA"}, {"Design No.": 9310, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 1500, "HV (kV)": 11, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": "alternative to 9067", "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "WIP-CCA", "Testing Status": "NA"}, {"Design No.": 9311, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 1500, "HV (kV)": 33, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "New Design -Alternative ", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": 0, "Start Date (Mechaincal)": "alternative to 9063", "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Failed"}, {"Design No.": 9311, "MARKET": "Export-Sudan", "Winding Material": "CU", "Rating (kVA)": 1500, "HV (kV)": 33, "LV (kV)": 0.433, "Frequency": 50, "Vector Group": "Dyn11", "Electrical Design Eng": "Mahdi Salem", "Mechanical Design Eng": "Hasan Odeh", "Design Classification": "Revised Design", "Remarks": null, "Start Date (Electrical)": null, "End Date (Electrical)": null, "Completion Time Electrical": null, "Start Date (Mechaincal)": null, "End Date (Mechaincal)": null, "Completion Time Mechanical": null, "Design Status": "Issued", "Production Status": "Finished", "Testing Status": "Passed"}];
+let DATA = FALLBACK_RAW.map(normalizeRow);
+
+// ── live fetch ──────────────────────────────────────────────────────
+function setSyncUI(state, msg){
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot' + (state==='live' ? ' live' : state==='stale' ? ' stale' : '');
+  lbl.textContent = msg;
+}
+
+// Finds the row that actually contains the recognized column headers —
+// handles sheets that have a title row and/or blank rows above the real
+// header row (like "MATCO DESIGNS Register" in row 1, blanks in rows 2–3,
+// headers in row 4). Returns the 0-based index of that row, or -1.
+function findHeaderRowIndex(rowsOfArrays){
+  let best=-1, bestScore=0;
+  const scanLimit=Math.min(rowsOfArrays.length,25); // header should be near the top
+  for(let i=0;i<scanLimit;i++){
+    const row=rowsOfArrays[i]||[];
+    let score=0;
+    row.forEach(cell=>{ if(COLMAP[cleanKey(cell)]) score++; });
+    if(score>bestScore){ bestScore=score; best=i; }
+  }
+  return bestScore>=3 ? best : -1; // require at least 3 recognized columns
+}
+
+function fetchLive(showAlertOnFail){
+  if(!SHEET_CSV_URL){ setSyncUI('','Static data — click to connect Google Sheet'); return; }
+  setSyncUI('stale','Syncing…');
+  Papa.parse(SHEET_CSV_URL, {
+    download:true, header:false, skipEmptyLines:true,
+    complete:function(res){
+      const rowsOfArrays=res.data||[];
+      const hIdx=findHeaderRowIndex(rowsOfArrays);
+      if(hIdx===-1){
+        setSyncUI('stale','Connected, but couldn\'t find matching column headers — check the sheet layout');
+        if(showAlertOnFail) alert('Connected to the sheet, but could not find a row with recognizable column headers (e.g. "Design No.", "MARKET", "Rating (kVA)"…). Make sure the header row is intact and near the top of the sheet.');
+        return;
+      }
+      const headerRow=rowsOfArrays[hIdx];
+      const dataRows=rowsOfArrays.slice(hIdx+1);
+      const rows=dataRows.map(arr=>{
+        const o={};
+        headerRow.forEach((h,i)=>{ if(h) o[h]=arr[i]; });
+        return o;
+      }).filter(r=>Object.values(r).some(v=>toStr(v)!==''));
+      if(rows.length){
+        DATA = rows.map(normalizeRow).filter(d=>d.design);
+        const now = new Date();
+        setSyncUI('live','Live — synced '+now.toLocaleTimeString()+' ('+DATA.length+' rows)');
+        fillAllSelects();
+        refresh();
+      } else {
+        setSyncUI('stale','Connected, headers found, but no data rows below them');
+      }
+    },
+    error:function(err){
+      setSyncUI('stale','Sync failed — showing last known data');
+      if(showAlertOnFail) alert('Could not fetch the sheet. Make sure it is published/shared as CSV and the URL is correct.');
+    }
+  });
+}
+
+function toggleCfgBar(){
+  const bar = document.getElementById('cfgbar');
+  bar.classList.toggle('show');
+  document.getElementById('cfg-url').value = SHEET_CSV_URL;
+}
+function saveCfg(){
+  const url = document.getElementById('cfg-url').value.trim();
+  if(!url) return;
+  SHEET_CSV_URL = url;
+  try{ localStorage.setItem('matco_sheet_csv_url', url); }catch(e){}
+  document.getElementById('cfgbar').classList.remove('show');
+  fetchLive(true);
+}
+function clearCfg(){
+  SHEET_CSV_URL='';
+  try{ localStorage.removeItem('matco_sheet_csv_url'); }catch(e){}
+  document.getElementById('cfgbar').classList.remove('show');
+  setSyncUI('','Static data — click to connect Google Sheet');
+}
+
+// ── stage pipeline for production tracker ──────────────────────
+const STAGE_NAMES=['Design Release','Core Winding','Coil Winding','CCA / Assembly','Finished (Production)','Tested &amp; Passed'];
+function stageOf(p){
+  const low=(p||'').toLowerCase();
+  if(low==='failed')return -1;
+  if(low==='not started')return 0;
+  if(low==='wip-core')return 1;
+  if(low==='wip-winding')return 2;
+  if(low==='wip-cca')return 3;
+  if(low==='finished')return 4;
+  return 0;
+}
+const STAT_COLOR={'Not Started':'#7B8899','WIP-Core':'#C68A1F','WIP-Winding':'#C68A1F','WIP-CCA':'#C68A1F','Finished':'#1A5276','Failed':'#C0392B'};
+const STAT_PILL={'Not Started':'pp','WIP-Core':'pw','WIP-Winding':'pw','WIP-CCA':'pw','Finished':'pb','Failed':'pn'};
+const TEST_PILL={'Passed':'pc','Failed':'pn','Needs Rework':'pu','NA':'pp'};
+
+function fmtN(v){const n=Number(v);return isNaN(n)?String(v||'—'):n.toLocaleString('en-US');}
+function uniq(arr){return [...new Set(arr)].filter(x=>x!==undefined&&x!==null&&x!=='').sort();}
+
+// ── populate filter dropdowns dynamically from whatever is in DATA ──
+function fillSelect(id, values, keepSelection){
+  const sel=document.getElementById(id);
+  const prev = keepSelection ? sel.value : '';
+  sel.innerHTML = '<option value="">All</option>';
+  values.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
+  if(prev && values.includes(prev)) sel.value = prev;
+}
+function fillAllSelects(){
+  fillSelect('f-market', uniq(DATA.map(d=>d.market)), true);
+  fillSelect('f-classification', uniq(DATA.map(d=>d.classification)), true);
+  fillSelect('f-eeng', uniq(DATA.map(d=>d.eeng)), true);
+  fillSelect('f-meng', uniq(DATA.map(d=>d.meng)), true);
+  fillSelect('f-material', uniq(DATA.map(d=>d.material)), true);
+  fillSelect('f-pstatus', uniq(DATA.map(d=>d.pstatus)), true);
+  fillSelect('f-tstatus', uniq(DATA.map(d=>d.tstatus)), true);
+}
+fillAllSelects();
+
+function resetFilters(){
+  ['f-market','f-classification','f-eeng','f-meng','f-material','f-pstatus','f-tstatus'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('srch-reg').value='';
+  document.getElementById('f-timepreset').value='all';
+  document.getElementById('f-date-from').value='';
+  document.getElementById('f-date-to').value='';
+  document.getElementById('fg-dates').classList.add('disabled');
+  refresh();
+}
+
+function filtered(){
+  const m=document.getElementById('f-market').value;
+  const cls=document.getElementById('f-classification').value;
+  const ee=document.getElementById('f-eeng').value;
+  const me=document.getElementById('f-meng').value;
+  const mat=document.getElementById('f-material').value;
+  const p=document.getElementById('f-pstatus').value;
+  const t=document.getElementById('f-tstatus').value;
+  const [from,to]=getActiveDateRange();
+  return DATA.filter(d=>{
+    if(!m||d.market===m){}else return false;
+    if(!cls||d.classification===cls){}else return false;
+    if(!ee||d.eeng===ee){}else return false;
+    if(!me||d.meng===me){}else return false;
+    if(!mat||d.material===mat){}else return false;
+    if(!p||d.pstatus===p){}else return false;
+    if(!t||d.tstatus===t){}else return false;
+    if(from&&to){
+      const dt=parseDateFlexible(d.startDateE);
+      if(!dt||dt<from||dt>to) return false;
+    }
+    return true;
+  });
+}
+
+function showTab(id,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+if(window.ChartDataLabels){Chart.register(ChartDataLabels);}
+const CH={};
+function mk(id,cfg){if(CH[id])CH[id].destroy();CH[id]=new Chart(document.getElementById(id),cfg);}
+const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{}}};
+const noL={legend:{display:false}};
+
+function refresh(){
+  const F=filtered();
+  document.getElementById('reg-count').textContent=DATA.length;
+  updateDateBanner();
+  renderKPIs(F);
+  renderCharts(F);
+  renderTracker(F);
+  renderRegister(F);
+}
+
+function updateDateBanner(){
+  const [from,to]=getActiveDateRange();
+  const banner=document.getElementById('date-banner');
+  if(!from||!to){ banner.classList.remove('show'); return; }
+  const noDate=DATA.filter(d=>!parseDateFlexible(d.startDateE)).length;
+  if(noDate>0){
+    banner.classList.add('show');
+    banner.innerHTML='⚠ '+noDate+' of '+DATA.length+' designs have no Start Date (Electrical) yet, so they\'re excluded from this Time View. Switch to "All Time" to see everything, or fill in that column in the sheet.';
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function renderKPIs(F){
+  const total=F.length;
+  const finished=F.filter(d=>d.pstatus==='Finished').length;
+  const notStart=F.filter(d=>d.pstatus==='Not Started').length;
+  const wip=F.filter(d=>d.pstatus.startsWith('WIP')).length;
+  const failedProd=F.filter(d=>d.pstatus==='Failed').length;
+  const cu=F.filter(d=>d.material==='CU').length;
+  const al=F.filter(d=>d.material==='AL').length;
+  const tested=F.filter(d=>d.tstatus==='Passed').length;
+  document.getElementById('kpis').innerHTML=[
+    {l:'Total Designs',v:total,s:'matching current filters',a:'#1A5276'},
+    {l:'Production Complete',v:finished,s:total?Math.round(finished/total*100)+'% of total (finished)':'—',a:'#1E8449'},
+    {l:'In Production (WIP)',v:wip,s:'currently in core / winding / CCA',a:'#C68A1F'},
+    {l:'Not Started',v:notStart,s:total?Math.round(notStart/total*100)+'% pending release':'—',a:'#7B8899'},
+    {l:'Tested &amp; Passed',v:tested,s:'designs verified by test',a:'#1E8449'},
+    {l:'Failed / Rework',v:failedProd,s:'requires re-design / rework',a:'#C0392B'},
+    {l:'Copper (CU) Designs',v:cu,s:total?Math.round(cu/total*100)+'% of total':'—',a:'#2E7DB2'},
+    {l:'Aluminum (AL) Designs',v:al,s:total?Math.round(al/total*100)+'% of total':'—',a:'#6C3483'},
+  ].map(k=>`<div class="kpi-card" style="--ac:${k.a}"><div class="lbl">${k.l}</div><div class="val">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
+}
+
+function countBy(arr,key){
+  const m=new Map();
+  arr.forEach(d=>{const k=d[key]||'—';m.set(k,(m.get(k)||0)+1);});
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]);
+}
+function withQty(arr){return arr.map(x=>x[0]+' ('+x[1]+')');}
+function pctLabel(v,total){return total?Math.round(v/total*100)+'%':'0%';}
+function sumArr(arr){return arr.reduce((s,x)=>s+x[1],0);}
+
+// ── flexible date parsing for Start Date (Electrical) ────────────
+function parseDateFlexible(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  const s=String(v).trim();
+  if(!s) return null;
+  // try native parse first (handles ISO, "Aug 8 2026", etc.)
+  let d=new Date(s);
+  if(!isNaN(d)) return d;
+  // try DD/MM/YYYY or MM/DD/YYYY
+  const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){
+    let a=+m[1],b=+m[2],y=+m[3]; if(y<100)y+=2000;
+    d=new Date(y,a-1,b); if(!isNaN(d)) return d;
+  }
+  return null;
+}
+function isoWeek(d){
+  const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=(dt.getUTCDay()+6)%7;
+  dt.setUTCDate(dt.getUTCDate()-day+3);
+  const firstThu=new Date(Date.UTC(dt.getUTCFullYear(),0,4));
+  const week=1+Math.round(((dt-firstThu)/86400000-3+((firstThu.getUTCDay()+6)%7))/7);
+  return dt.getUTCFullYear()+'-W'+String(week).padStart(2,'0');
+}
+function periodKey(d,mode){
+  if(mode==='days') return isoDate(d);
+  if(mode==='weeks') return isoWeek(d);
+  if(mode==='months') return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  return String(d.getFullYear());
+}
+function yearOf(d){ return d ? d.getFullYear() : null; }
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ── Time View: preset → calendar date range ─────────────────────
+   Drives a real filter on Start Date (Electrical) across every KPI,
+   chart, tracker card and register row — not just one chart. */
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function startOfWeek(d){const r=new Date(d);const day=(r.getDay()+6)%7;return addDays(r,-day);} // Monday
+function endOfWeek(d){return addDays(startOfWeek(d),6);}
+function startOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1);}
+function endOfMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0);}
+function startOfQuarter(d){const q=Math.floor(d.getMonth()/3);return new Date(d.getFullYear(),q*3,1);}
+function endOfQuarter(d){const q=Math.floor(d.getMonth()/3);return new Date(d.getFullYear(),q*3+3,0);}
+function startOfYear(d){return new Date(d.getFullYear(),0,1);}
+function endOfYear(d){return new Date(d.getFullYear(),11,31);}
+
+function computePresetRange(preset){
+  const today=new Date(); today.setHours(0,0,0,0);
+  switch(preset){
+    case 'today': return [today,today];
+    case 'last7': return [addDays(today,-6),today];
+    case 'week': return [startOfWeek(today),endOfWeek(today)];
+    case 'last30': return [addDays(today,-29),today];
+    case 'month': return [startOfMonth(today),endOfMonth(today)];
+    case 'quarter': return [startOfQuarter(today),endOfQuarter(today)];
+    case 'year': return [startOfYear(today),endOfYear(today)];
+    default: return [null,null]; // 'all' or 'custom' (custom keeps whatever is in the inputs)
+  }
+}
+// sensible default chart granularity based on the span of the active range
+function defaultGroupByForSpan(from,to){
+  if(!from||!to) return 'years';
+  const days=Math.round((to-from)/86400000);
+  if(days<=31) return 'days';
+  if(days<=120) return 'weeks';
+  if(days<=400) return 'months';
+  return 'years';
+}
+
+function onPresetChange(){
+  const preset=document.getElementById('f-timepreset').value;
+  const fromEl=document.getElementById('f-date-from'), toEl=document.getElementById('f-date-to');
+  const datesWrap=document.getElementById('fg-dates');
+  if(preset==='all'){
+    fromEl.value=''; toEl.value='';
+    datesWrap.classList.add('disabled');
+  } else if(preset==='custom'){
+    datesWrap.classList.remove('disabled');
+  } else {
+    const [from,to]=computePresetRange(preset);
+    fromEl.value=isoDate(from); toEl.value=isoDate(to);
+    datesWrap.classList.remove('disabled');
+    document.getElementById('c-time-groupby').value=defaultGroupByForSpan(from,to);
+  }
+  refresh();
+}
+function onDateInputChange(){
+  const fromEl=document.getElementById('f-date-from'), toEl=document.getElementById('f-date-to');
+  document.getElementById('f-timepreset').value='custom';
+  document.getElementById('fg-dates').classList.remove('disabled');
+  if(fromEl.value && toEl.value){
+    document.getElementById('c-time-groupby').value=defaultGroupByForSpan(new Date(fromEl.value),new Date(toEl.value));
+  }
+  refresh();
+}
+function onGroupByChange(){ refresh(); }
+
+function getActiveDateRange(){
+  const fromV=document.getElementById('f-date-from').value;
+  const toV=document.getElementById('f-date-to').value;
+  if(!fromV||!toV) return [null,null];
+  const from=new Date(fromV); from.setHours(0,0,0,0);
+  const to=new Date(toV); to.setHours(23,59,59,999);
+  return [from,to];
+}
+
+function renderCharts(F){
+  // c1 material
+  const matArr=countBy(F,'material');
+  const matTotal=sumArr(matArr);
+  mk('c1',{type:'doughnut',data:{labels:withQty(matArr),datasets:[{data:matArr.map(x=>x[1]),backgroundColor:['#2E7DB2','#6C3483','#C68A1F'],borderWidth:2,borderColor:'#fff'}]},options:{...base,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}},datalabels:{color:'#fff',font:{weight:'bold',size:12},formatter:v=>pctLabel(v,matTotal)}}}});
+
+  // c2 production status — WIP stages collapsed into a single "WIP" slice
+  function pstatusGroup(p){return (p||'').startsWith('WIP')?'WIP':p;}
+  const psArr=countBy(F.filter(d=>d.pstatus!=='Failed').map(d=>({pstatus:pstatusGroup(d.pstatus)})),'pstatus');
+  const psColorMap={'Not Started':'#7B8899','WIP':'#C68A1F','Finished':'#1A5276'};
+  const psColors=psArr.map(x=>psColorMap[x[0]]||'#7B8899');
+  const psTotal=sumArr(psArr);
+  mk('c2',{type:'doughnut',data:{labels:withQty(psArr),datasets:[{data:psArr.map(x=>x[1]),backgroundColor:psColors,borderWidth:2,borderColor:'#fff'}]},options:{...base,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,font:{size:9},padding:6}},datalabels:{color:'#fff',font:{weight:'bold',size:12},formatter:v=>pctLabel(v,psTotal)}}}});
+
+  // c4 testing status
+  const tsArr=countBy(F,'tstatus');
+  const tsColorMap={'Passed':'#1E8449','Failed':'#C0392B','Needs Rework':'#8E44AD','NA':'#B0BCCC'};
+  const tsColors=tsArr.map(x=>tsColorMap[x[0]]||'#7B8899');
+  const tsTotal=sumArr(tsArr);
+  mk('c4',{type:'doughnut',data:{labels:withQty(tsArr),datasets:[{data:tsArr.map(x=>x[1]),backgroundColor:tsColors,borderWidth:2,borderColor:'#fff'}]},options:{...base,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}},datalabels:{color:'#fff',font:{weight:'bold',size:12},formatter:v=>pctLabel(v,tsTotal)}}}});
+
+  // c8 frequency split
+  const frArr=countBy(F.filter(d=>d.freq).map(d=>({freq:d.freq+' Hz'})),'freq');
+  const frTotal=sumArr(frArr);
+  mk('c8',{type:'doughnut',data:{labels:withQty(frArr),datasets:[{data:frArr.map(x=>x[1]),backgroundColor:['#117864','#5BA3E0','#C68A1F'],borderWidth:2,borderColor:'#fff'}]},options:{...base,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}},datalabels:{color:'#fff',font:{weight:'bold',size:12},formatter:v=>pctLabel(v,frTotal)}}}});
+
+  // c5 market
+  const mkArr=countBy(F,'market');
+  const mkTotal=sumArr(mkArr);
+  mk('c5',{type:'bar',data:{labels:withQty(mkArr),datasets:[{data:mkArr.map(x=>x[1]),backgroundColor:'#2E7DB2',borderRadius:4,datalabels:{anchor:'end',align:'top',color:'#333',font:{size:9,weight:'bold'},formatter:v=>pctLabel(v,mkTotal)}}]},options:{...base,plugins:{...noL,datalabels:{}},scales:{y:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},x:{ticks:{font:{size:10}}}}}});
+
+  // c6 electrical design eng
+  const eeArr=countBy(F,'eeng');
+  const eeTotal=sumArr(eeArr);
+  mk('c6',{type:'bar',data:{labels:withQty(eeArr),datasets:[{data:eeArr.map(x=>x[1]),backgroundColor:'#5BA3E0',borderRadius:4,datalabels:{anchor:'end',align:'top',color:'#333',font:{size:9,weight:'bold'},formatter:v=>pctLabel(v,eeTotal)}}]},options:{...base,plugins:{...noL,datalabels:{}},scales:{y:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},x:{ticks:{font:{size:10}}}}}});
+
+  // c6b mechanical design eng
+  const meArr=countBy(F,'meng');
+  const meTotal=sumArr(meArr);
+  mk('c6b',{type:'bar',data:{labels:withQty(meArr),datasets:[{data:meArr.map(x=>x[1]),backgroundColor:'#6C3483',borderRadius:4,datalabels:{anchor:'end',align:'top',color:'#333',font:{size:9,weight:'bold'},formatter:v=>pctLabel(v,meTotal)}}]},options:{...base,plugins:{...noL,datalabels:{}},scales:{y:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},x:{ticks:{font:{size:10}}}}}});
+
+  // c12 vector group
+  const vgArr=countBy(F.filter(d=>d.vgroup),'vgroup');
+  const vgTotal=sumArr(vgArr);
+  mk('c12',{type:'bar',data:{labels:withQty(vgArr),datasets:[{data:vgArr.map(x=>x[1]),backgroundColor:'#8E44AD',borderRadius:4,datalabels:{anchor:'end',align:'top',color:'#333',font:{size:9,weight:'bold'},formatter:v=>pctLabel(v,vgTotal)}}]},options:{...base,plugins:{...noL,datalabels:{}},scales:{y:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},x:{ticks:{font:{size:10}}}}}});
+
+  // c7 designs by individual rating (kVA) value
+  const rtArr=countBy(F.filter(d=>d.rating!=null),'rating').sort((a,b)=>Number(a[0])-Number(b[0]));
+  const rtTotal=sumArr(rtArr);
+  mk('c7',{type:'bar',data:{labels:rtArr.map(x=>x[0]+' kVA ('+x[1]+')'),datasets:[{data:rtArr.map(x=>x[1]),backgroundColor:'#1A5276',borderRadius:3,datalabels:{anchor:'end',align:'right',color:'#333',font:{size:9,weight:'bold'},formatter:v=>pctLabel(v,rtTotal)}}]},options:{...base,indexAxis:'y',plugins:{...noL,datalabels:{}},scales:{x:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},y:{ticks:{font:{size:9}}}}}});
+
+  // c9 WIP sub-group breakdown
+  const wipArr=countBy(F.filter(d=>d.pstatus.startsWith('WIP')),'pstatus');
+  const wipTotal=sumArr(wipArr);
+  mk('c9',{type:'bar',data:{labels:withQty(wipArr),datasets:[{data:wipArr.map(x=>x[1]),backgroundColor:'#C68A1F',borderRadius:4,datalabels:{anchor:'end',align:'top',color:'#333',font:{size:9,weight:'bold'},formatter:v=>pctLabel(v,wipTotal)}}]},options:{...base,plugins:{...noL,datalabels:{}},scales:{y:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},x:{ticks:{font:{size:10}}}}}});
+
+  // c10 classification breakdown
+  function clsGroup(c){
+    c=(c||'').toLowerCase();
+    if(c.includes('alternat'))return 'New Design - Alternative';
+    if(c.includes('revis'))return 'Revised Design';
+    if(c.includes('repair'))return 'Repair';
+    if(c.includes('new design'))return 'New Design';
+    return c ? c : 'Other';
+  }
+  const clsArr=countBy(F.map(d=>({classification:clsGroup(d.classification)})),'classification');
+  const clsTotal=sumArr(clsArr);
+  mk('c10',{type:'bar',data:{labels:withQty(clsArr),datasets:[{data:clsArr.map(x=>x[1]),backgroundColor:['#0E2A47','#2E7DB2','#5BA3E0','#C68A1F','#7B8899'],borderRadius:4,datalabels:{anchor:'end',align:'right',color:'#333',font:{size:9,weight:'bold'},formatter:v=>pctLabel(v,clsTotal)}}]},options:{...base,indexAxis:'y',plugins:{...noL,datalabels:{}},scales:{x:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},y:{ticks:{font:{size:10}}}}}});
+
+  // designs over time — grouped by Start Date (Electrical); F is already
+  // restricted to the active Time View range (if any) via filtered().
+  const mode=document.getElementById('c-time-groupby').value;
+  const [rangeFrom,rangeTo]=getActiveDateRange();
+  const withDates=F.map(d=>({...d,_d:parseDateFlexible(d.startDateE)})).filter(d=>d._d);
+  const noteEl=document.getElementById('time-note');
+  const boxEl=document.getElementById('c-time-box');
+  const rangeTxt=(rangeFrom&&rangeTo)?(' · '+document.getElementById('f-timepreset').selectedOptions[0].textContent):'';
+  if(!withDates.length){
+    noteEl.textContent='no Start Date (Electrical) values in range yet'+rangeTxt;
+    boxEl.innerHTML='<div class="empty-note">No designs with a Start Date (Electrical) fall in the current Time View'+(rangeFrom?' ('+isoDate(rangeFrom)+' to '+isoDate(rangeTo)+')':'')+'.<br>Once dates are filled in, this chart will group designs by '+mode+' automatically.</div>';
+  } else {
+    noteEl.textContent='grouped by Start Date (Electrical)'+rangeTxt;
+    if(!document.getElementById('c-time')){ boxEl.innerHTML='<canvas id="c-time"></canvas>'; }
+    const tArr=countBy(withDates.map(d=>({p:periodKey(d._d,mode)})),'p').sort((a,b)=>a[0]<b[0]?-1:1);
+    const tTotal=sumArr(tArr);
+    mk('c-time',{type:'bar',data:{labels:tArr.map(x=>x[0]),datasets:[{data:tArr.map(x=>x[1]),backgroundColor:'#117864',borderRadius:5,maxBarThickness:60,datalabels:{anchor:'end',align:'top',color:'#333',font:{size:10,weight:'bold'},formatter:v=>pctLabel(v,tTotal)}}]},options:{...base,plugins:{...noL,datalabels:{}},scales:{y:{beginAtZero:true,ticks:{precision:0,font:{size:9}}},x:{ticks:{font:{size:10,weight:'bold'}}}}}});
+  }
+}
+
+function renderTracker(F){
+  const totalOpen=F.filter(d=>d.dstatus==='Issued').length;
+  const notIssued=F.filter(d=>d.dstatus==='Not Issued').length;
+  const wip=F.filter(d=>d.pstatus!=='Finished').length;
+  const failedRework=F.filter(d=>d.tstatus==='Failed'||d.tstatus==='Needs Rework').length;
+  document.getElementById('trk-count').textContent=F.length;
+  document.getElementById('trk-kpis').innerHTML=[
+    {l:'Total Open Designs',v:totalOpen,s:'design status = Issued',a:'#0E2A47'},
+    {l:'Not Issued',v:notIssued,s:'design status = Not Issued',a:'#7B8899'},
+    {l:'In Production (WIP)',v:wip,s:'production status other than Finished',a:'#2E7DB2'},
+    {l:'Failed / Needs Rework',v:failedRework,s:'testing status = Failed or Needs Rework',a:'#C0392B'},
+  ].map(k=>`<div class="kpi-card" style="--ac:${k.a}"><div class="lbl">${k.l}</div><div class="val">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
+
+  document.getElementById('trk-grid').innerHTML = F.map(d=>{
+    const st=stageOf(d.pstatus);
+    const isFail=st===-1;
+    const totalSteps=STAGE_NAMES.length;
+    const pct = isFail?0:Math.round((st/(totalSteps-1))*100);
+    const pipe=STAGE_NAMES.map((n,i)=>{
+      let cls='';
+      if(isFail) cls = i===0?'fail':'';
+      else if(i<st) cls='done';
+      else if(i===st) cls='active';
+      return `<div class="pip-step ${cls}"></div>`;
+    }).join('');
+    const steps=STAGE_NAMES.map((n,i)=>{
+      let cls='';
+      if(!isFail){ if(i<st)cls='s-done'; else if(i===st)cls='s-active'; }
+      return `<span class="${cls}">${n}</span>`;
+    }).join('');
+    const scolor= isFail?'#C0392B':(STAT_COLOR[d.pstatus]||'#7B8899');
+    const sname = isFail?'Failed — Rework Required':STAGE_NAMES[st];
+    const pillCls = STAT_PILL[d.pstatus]||'pp';
+    const testPillCls = TEST_PILL[d.tstatus]||'pp';
+    return `<div class="wip-card">
+      <div class="wip-card-header">
+        <div><div class="wip-tag">⚡ Design ${d.design}</div><div class="wip-cust">${d.market||'—'} &nbsp;&middot;&nbsp; E: ${d.eeng||'—'} &nbsp;&middot;&nbsp; M: ${d.meng||'—'}</div></div>
+        <div class="wip-amount">${fmtN(d.rating)} kVA</div>
+      </div>
+      <div class="wip-meta">
+        <span class="wip-badge"><b>${d.material||'—'}</b> Winding</span>
+        <span class="wip-badge"><b>${d.hv||'—'}/${d.lv||'—'}</b> kV</span>
+        <span class="wip-badge">${d.vgroup||'Vector Group —'}</span>
+        <span class="wip-badge">${d.freq?d.freq+' Hz':'Freq —'}</span>
+        <span class="wip-badge">${d.classification||'—'}</span>
+      </div>
+      <div class="stage-label">
+        <span class="stage-name" style="color:${scolor}">▶ ${sname}</span>
+        <span class="stage-pct"><span class="pill ${pillCls}">${d.pstatus}</span></span>
+      </div>
+      <div class="pipeline">${pipe}</div>
+      <div class="stage-steps">${steps}</div>
+      <div class="wip-footer">
+        <span style="font-size:10px;color:#7B8899">Progress: ${isFail?'—':pct+'%'}</span>
+        <span style="font-size:10px;color:#7B8899">Testing: <span class="pill ${testPillCls}">${d.tstatus}</span></span>
+      </div>
+    </div>`;
+  }).join('') || '<p style="color:#B0BCCC;padding:20px">No designs match the current filters.</p>';
+}
+
+function renderRegister(F){
+  const q=(document.getElementById('srch-reg').value||'').toLowerCase();
+  const f=F.filter(d=>{
+    if(!q) return true;
+    const yr=yearOf(parseDateFlexible(d.startDateE));
+    return [d.design,yr,d.material,d.rating,d.hv,d.lv,d.freq,d.vgroup,d.market,d.eeng,d.meng,d.classification,d.completionE,d.completionM,d.dstatus,d.pstatus,d.tstatus].join(' ').toLowerCase().includes(q);
+  });
+  document.getElementById('reg-info').textContent='Showing '+f.length+' of '+DATA.length;
+  document.getElementById('tbody-reg').innerHTML=f.map((d,idx)=>{
+    const pillCls = STAT_PILL[d.pstatus]||'pp';
+    const testPillCls = TEST_PILL[d.tstatus]||'pp';
+    const yr=yearOf(parseDateFlexible(d.startDateE));
+    return `<tr><td>${idx+1}</td><td><strong style="color:#0E2A47">${d.design}</strong></td><td>${yr||'—'}</td><td>${d.material||'—'}</td><td class="r">${fmtN(d.rating)}</td><td>${d.hv||'—'}</td><td>${d.lv||'—'}</td><td>${d.freq?d.freq+' Hz':'—'}</td><td>${d.vgroup||'—'}</td><td>${d.market||'—'}</td><td>${d.eeng||'—'}</td><td>${d.meng||'—'}</td><td>${d.classification||'—'}</td><td>${d.completionE!=null?d.completionE:'—'}</td><td>${d.completionM!=null?d.completionM:'—'}</td><td><span class="pill pb">${d.dstatus}</span></td><td><span class="pill ${pillCls}">${d.pstatus}</span></td><td><span class="pill ${testPillCls}">${d.tstatus}</span></td></tr>`;
+  }).join('');
+}
+
+// ── report date ─────────────────────────────────────────────
+(function(){
+  const M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const n=new Date();
+  document.getElementById('report-date').textContent=String(n.getDate()).padStart(2,'0')+' '+M[n.getMonth()]+' '+n.getFullYear();
+})();
+
+refresh();
+if(SHEET_CSV_URL){ fetchLive(false); setInterval(()=>fetchLive(false), REFRESH_MS); }
+</script>
+</body></html>
